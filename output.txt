@@ -2,4 +2,10 @@
 -3 -10 15 -36 
 5 -2 -9 -20 
 
-Time taken by first approach 0.002205407 
+Time taken by first approach 0.001778038 
+
+-1 10 -15 -28 
+-3 -10 15 -36 
+5 -2 -9 -20 
+
+Time taken by second approach 0.000296879 

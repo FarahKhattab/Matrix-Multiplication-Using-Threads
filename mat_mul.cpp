@@ -2,31 +2,27 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <chrono>
-
+#include <string>
 using namespace std;
 
-struct arg_struct {
-    int arg_row;
-    int arg_col;
-    int arg_size;
+struct arg_struct {    //struct of parameters for the threads.
+    int arg_row;       //variable to store which row the thread is working on.
+    int arg_col;       //variable to store which column the thread is working on.
+                       //It won't be used when threads compute matrix by row.
 };
 
 
-FILE *pRead;
-FILE *pWrite;
+int** mat1;            //input matrix 1
+int** mat2;            //input matrix 2
+int** mat3;            //first output matrix using element computation approach
+int** mat4;            //seconf output matrix using row computation approach
 
-int** mat1;
-int** mat2;
-int** mat3;
-int** mat4;
+int n,m,p;             //matrix sizes 
 
-int n,m,p;
+float time_taken[2];   //array of time taken for the 2 approches 
 
-float time_taken[2];
 
-int k=0;
-
-int** createMatrix(int rows, int cols)
+int** createMatrix(int rows, int cols) //function to allocate the matrices in memory
 {
   // Create a new dynamic array of integer pointers
   int** array = (int**)malloc(rows * sizeof(int*));
@@ -42,9 +38,10 @@ int** createMatrix(int rows, int cols)
   return array;
 }
 
-void Load()
+void Load(const char* input_file)//function that reads input matrices from a given file  
 {
-    pRead=fopen("input.txt","r");
+    FILE *pRead;        //pointer for the input file
+    pRead=fopen(input_file,"r");
     
     if (pRead== NULL) 
     {
@@ -59,7 +56,6 @@ void Load()
     
     int i=0,j=0;
 
-   // int mat1[n][m];
     while(!feof(pRead) && i<n)
     {
     	
@@ -96,8 +92,9 @@ void Load()
     
     fclose(pRead);
 }
-void save()
+void save()//function that writes ouput matrices and time taken for each approach
 {
+    FILE *pWrite;   //pointer for the output file
     pWrite=fopen("output.txt","w");
     
     int i,j;
@@ -113,11 +110,25 @@ void save()
 	fprintf(pWrite,"\n");	
     } 
     
-    fprintf(pWrite,"\nTime taken by first approach %.9f \n", time_taken[0]);
+    fprintf(pWrite,"\nTime taken by first approach %.9f \n\n", time_taken[0]);
+    
+    for (i = 0; i <n; i++) 
+    {
+	 for (j = 0; j < p; j++) 
+	{
+	      fprintf(pWrite,"%d ", mat4[i][j]);
+	      
+	}
+
+	fprintf(pWrite,"\n");	
+    } 
+    
+    fprintf(pWrite,"\nTime taken by second approach %.9f \n", time_taken[1]);
+    
     fclose(pWrite);
 }
 
-void diplay_mat()
+void display_mat()//function that displays matrices
 {
     int i,j;
     
@@ -148,32 +159,60 @@ void diplay_mat()
 
 void *dot_product(void *arguments)
 {
-	k++;
     struct arg_struct *args = (struct arg_struct *)arguments;
     
     int sum=0;
     
-    for (int i=0 ; i < args->arg_size ; i++)
+    for (int i=0 ; i < m ; i++)
     {
-       //printf("k=%d \t i=%d \tmat1[%d][%d]=%d \t mat2[%d][%d]=%d\n",k,i,args->arg_row, i,mat1[args->arg_row][i],i,args->arg_col,mat2[i][args->arg_col]);
-    	sum = sum + mat1[args->arg_row][i]*mat2[i][args->arg_col];
-    	
+    	sum = sum + mat1[args->arg_row][i]*mat2[i][args->arg_col];	
     }
    
     mat3[args->arg_row][args->arg_col]=sum;   
-    //printf("k=%d \t sum=%d\n",k,sum);
+    pthread_exit(NULL);
+    return NULL;
+}
+
+void *row_operations(void *arguments)
+{
+    struct arg_struct *args = (struct arg_struct *)arguments;
+    
+    int sum;
+    
+    for (int i=0 ; i < p; i++)
+    {   
+         sum=0;
+         
+         for (int j=0 ; j < m ; j++)
+         {
+    	      sum = sum + mat1[args->arg_row][j]*mat2[j][i];
+         }
+         
+         mat4[args->arg_row][i]=sum;	
+    }
+   
     pthread_exit(NULL);
     return NULL;
 }
 
 
-int main()
+int main(int argc, char *argv[])
 {
-    int i,j;
+
+    if (argc != 2)
+    {
+         fprintf(stderr, "usage: %s <input_file>\n", argv[0]);
+         return -1;
+    }
     
-    Load();
+    
+    int i,j;
+
+    const char* filename= argv[1];
+
+    Load(filename);
 	  
-    //diplay_mat();
+    //display_mat();
 
     mat3 = createMatrix(n,p);
     
@@ -187,7 +226,7 @@ int main()
               arg_struct* args = (struct arg_struct*) malloc(sizeof(struct arg_struct));
               args->arg_row = i;
               args->arg_col = j;
-              args->arg_size=m; 
+              
               if (pthread_create(&element_thread[i][j], NULL, &dot_product, (void *)args) != 0) 
               {
                    printf("Uh-oh!\n");
@@ -209,6 +248,35 @@ int main()
     auto end = std::chrono::high_resolution_clock::now();
     double seconds = std::chrono::duration<double>(end-start).count();
     time_taken[0]= static_cast<float>(seconds);
+    
+    
+    mat4 = createMatrix(n,p);
+     
+    pthread_t row_thread[n];
+    start = std::chrono::high_resolution_clock::now();
+    
+    for(int i=0; i < n;i++)
+    {
+              arg_struct* args = (struct arg_struct*) malloc(sizeof(struct arg_struct));
+              args->arg_row = i;
+              args->arg_col = 0;
+
+              if (pthread_create(&row_thread[i], NULL, &row_operations, (void *)args) != 0) 
+              {
+                   printf("Uh-oh!\n");
+                   return -1;
+              }
+    }
+    
+   
+    for(int i=0; i < n;i++)
+    {    
+       	pthread_join(row_thread[i], NULL);
+    }
+    
+    end = std::chrono::high_resolution_clock::now();
+    seconds = std::chrono::duration<double>(end-start).count();
+    time_taken[1]= static_cast<float>(seconds);
     
     save();
     return 0;
