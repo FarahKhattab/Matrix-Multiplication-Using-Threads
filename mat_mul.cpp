@@ -17,7 +17,7 @@ int** mat2;            //input matrix 2
 int** mat3;            //first output matrix using element computation approach
 int** mat4;            //seconf output matrix using row computation approach
 
-int n,m,p;             //matrix sizes 
+int n,m,m1,m2,p;             //matrix sizes 
 
 float time_taken[2];   //array of time taken for the 2 approches 
 
@@ -50,16 +50,16 @@ void Load(const char* input_file)//function that reads input matrices from a giv
     }
     
     fscanf(pRead,"%d",&n);
-    fscanf(pRead,"%d",&m);
+    fscanf(pRead,"%d",&m1);
     
-    mat1 = createMatrix(n,m);
+    mat1 = createMatrix(n,m1);
     
     int i=0,j=0;
 
     while(!feof(pRead) && i<n)
     {
     	
-    	while( !feof(pRead) && j<m)
+    	while( !feof(pRead) && j<m1)
     	{
     		fscanf(pRead,"%d",&mat1[i][j]);		
     		j++;
@@ -69,15 +69,15 @@ void Load(const char* input_file)//function that reads input matrices from a giv
         i++;
     }
     
-    fscanf(pRead,"%d",&m);
+    fscanf(pRead,"%d",&m2);
     fscanf(pRead,"%d",&p);
     
     i=0;
     j=0;
     
-    mat2 = createMatrix(m,p);
+    mat2 = createMatrix(m2,p);
     
-    while(!feof(pRead) && i<m)
+    while(!feof(pRead) && i<m2)
     { 
     	
     	while(!feof(pRead) && j<p)
@@ -99,6 +99,8 @@ void save()//function that writes ouput matrices and time taken for each approac
     
     int i,j;
 
+     fprintf(pWrite,"By Row\n");
+    
     for (i = 0; i <n; i++) 
     {
 	 for (j = 0; j < p; j++) 
@@ -111,6 +113,8 @@ void save()//function that writes ouput matrices and time taken for each approac
     } 
     
     fprintf(pWrite,"\nTime taken by first approach %.9f \n\n", time_taken[0]);
+    
+    fprintf(pWrite,"By Element\n");
     
     for (i = 0; i <n; i++) 
     {
@@ -211,8 +215,20 @@ int main(int argc, char *argv[])
     const char* filename= argv[1];
 
     Load(filename);
+    
+    if(m1!=m2)
+    {
+         printf("Multipication of Matrix is not Possible !!\n");
+         FILE *pWrite;   //pointer for the output file
+         pWrite=fopen("output.txt","w");
+         fprintf(pWrite,"Multipication of Matrix is not Possible !!\n");
+         fclose(pWrite);
+         return 0;
+    }
 	  
     //display_mat();
+    
+    m=m1;
 
     mat3 = createMatrix(n,p);
     
